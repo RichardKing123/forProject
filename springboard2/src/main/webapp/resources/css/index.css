@@ -1,0 +1,74 @@
+@CHARSET "UTF-8";
+body {
+	width: 980px;
+	margin: 0px auto;
+	font-size: 12px;
+}
+
+.clear {
+	clear: both;
+}
+
+/* 링크 설정 */
+a:link {
+	text-decoration: none;
+	color: #333;	
+}
+ a:visited {
+	text-decoration: none;
+	color: #333;
+}
+a:hover {
+	text-decoration: none;	
+	color: red;	
+}
+a:active {
+	text-decoration: none;
+	color: blue;
+}
+
+/* header */
+header { 
+	margin-top: 20px; 
+	border-bottom: 1px dashed blue;
+	height: 80px; 
+}
+header img { border: none; }
+header #logo {
+	margin-left: 10px;
+	float: left;
+}
+header #header_link {
+	float: right;
+	margin-right: 10px;	
+	width: 500px;	
+}
+header #header_link span {
+	display: inline-block;
+	padding: 0 8px;	
+	border-right: 1px solid #999;
+}
+header #header_link ul { float: right; list-style: none; }
+header #header_link li {
+	float: left;
+	padding: 0 8px;	
+	border-right: 1px solid #999;
+}
+header #header_link ul li.no_line { border-right: none; }
+
+/* footer */
+footer {	
+	border-top: 1px dotted blue;
+}
+footer #footer_info {
+	margin: 10px auto;	
+	line-height: 1.5em;	
+	text-align: center;
+	width: 600px;
+}
+
+/* content */
+article{
+	margin: 30px auto;	
+	min-height: 700px;
+}

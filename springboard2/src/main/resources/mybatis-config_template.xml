@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration 
+	PUBLIC "-//mybatis.org//DTD Config 3.0//EN" 
+	"http://mybatis.org/dtd/mybatis-3-config.dtd">
+<!--
+	자바의 전통적인 JDBC 프로그래밍은 DB Connection을 개설하고 이 Connection
+	객체를 이용해 PreparedStatement 객체를 구하여 SQL 쿼리를 발생한다.
+	그리고 조회 결과를 모델 객체에 설정하는 과정을 거쳐 DB 자원을 해제하는 작업을
+	일일이 구현해야 한다. 이런 일련의 작업을 필요할 때 마다 매번 반복적으로 해야 하는 
+	불편함이 있다. 	MyBatis는 이런 자바의 전통적인 JDBC 프로그래밍을 간편하고
+	쉽게 구현할 수 있도록 도움을 주는 프레임워크이다. 다시 말해 자바의 전통적인 JDBC
+	프로그래밍을 대체할 수 있는 프레임워크 이다.
+	MyBatis는 원래 iBatis라는 이름으로 아파치 프로젝트에 편입되어 발전해 오다가
+	2010년 MyBatis3.x가 공개되면서 MyBatis라는 이름으로 변경되고 아파치
+	프로젝트에서 분리되어 Google Code의 프로젝트로 편입 되었다.
+	MyBatis의 가장 큰 특징은 SQL 쿼리를 프로그램 소스에서 분리해 별도의 
+	Mapper XML 파일이나 Mapper 인터페이스를 작성해 관리한다는 점이다.
+	
+	MyBatis3.x의 주요 구성 요소는 다음과 같다.
+	1. MyBatis 설정 파일		
+		DB의 접속 주소(별도 설정 가능)나 매핑(Mapper) 파일의 경로, 도메인
+		객체의 별칭, TransactionManager, DBCP 등의 정보를 설정한다.
+		
+	2. SqlSessionFactoryBean
+		MyBatis 설정 파일을 읽어 SqlSessionFactory 객체를 생성 해주는 객체
+		일반적으로 애플리케이션이 시작될 때 또는 DAO 객체에서 SqlSessionFactory
+		객체를 생성해 주는 역할을 하며 SqlSessionFactory 객체를 생성한 후에는 
+		재사용할 일이 없다.
+	
+	3. SqlSessionFactory
+		SqlSession 객체를 생성해 주는 객체로 애플리케이션에서 하나의 객체를
+		공유해 사용해야 하기 때문에 스레드에 안전하게 설계되어 있다.
+		스프링 프레임워크와 연계할 경우 DI 컨테이너에서 관리된다.
+	
+	4. SqlSessionTemplate
+		실제 SQL 발행이나 트랜잭션을 관리하는 객체로 SqlSessionFactory를
+		통해 필요할 때 마다 생성하여 사용하고 폐기한다. 
+		SqlSessionTemplate는 SqlSession을 구현한 클래스 이다. 
+		
+	5. Mapper 설정 정보
+		SQL 쿼리를 정의한 Mapper는 Mapper xml 파일이나 MyBatis가
+		제공하는 Mapper 인터페이스를 구현해 Mapper 정보를 설정할 수 있다.  
+		Mapper xml 설정 파일만 사용할 수도 있고 Mapper 인터페이스만
+		사용할 수도 있다. 또한 Mapper xml 설정 파일과 Mapper 인터페이스를
+		혼용해서 사용할 수도 있다. 
+		
+		- Mapper xml 파일
+		SQL 쿼리와 파라미터, 반환 타입 등을 xml 파일에 정의한 Mapper
+	
+		- Mapper 인터페이스
+		MyBatis에서 제공하는 인터페이스로 애노테이션을 사용해 SQL이나 
+		매핑 정보를 설정할 수 있다. Mapper 인터페이스 구현체는 SqlSession
+		객체와 같이 생성되기 때문에 SqlSession 객체와 함께 생성되고 폐기된다.
+		
+	참고 사이트 : http://blog.mybatis.org/
+				   http://www.mybatis.org/mybatis-3/ko/index.html
+-->
+<configuration>
+</configuration>	

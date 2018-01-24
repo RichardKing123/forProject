@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans:beans xmlns="http://www.springframework.org/schema/mvc"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:beans="http://www.springframework.org/schema/beans"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:p="http://www.springframework.org/schema/p"	
+	xsi:schemaLocation="http://www.springframework.org/schema/mvc 
+		http://www.springframework.org/schema/mvc/spring-mvc.xsd
+		http://www.springframework.org/schema/beans 
+		http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context 
+		http://www.springframework.org/schema/context/spring-context.xsd">
+
+	<!-- Annotation 기법을 이용한 SpringMVC 설정 파일 -->	
+	<!-- 
+		이 설정 파일은 Spring MVC 관련 설정 파일로 MVC 위주의 설정이 많기 때문에
+		xmlns를 지정할 때 mvc에는 접두어를 사용하지 않았다. 그래서 mvc 네임스페이스는
+		접두어를 사용하지 않은 태그를 사용해야 한다. 나머지 네임스페이스는 접두어를
+		사용해 xmlns지정했기 때문에 접두어를 붙여 태그를 사용해야 한다.	
+	
+		<annotation-driven /> 태그는 Spring MVC에서 필요한 Annotation 기반
+		모든 기능을 사용할 수 있는 설정으로 이 태그는 JSR-303 검증 지원, 메시지 변환,
+		필드 포매팅 지원 등을 포함한 강력하고 다양한 기능을 제공한다.
+		
+		<context:component-scan>에 의해 컨트롤러가 스프링 DI 컨테이너에
+		등록되고 @Controller Annotation이 지정된 클래스의 객체가 컨트롤러라는
+		것을 판단하고 Spring MVC의 다양한 Annotation을 사용하기 위한 설정으로
+		Spring MVC의 Annotation을 사용할 때는 필수라고 생각하면 되겠다.
+		
+		<annotation-driven /> 태그는 아래 두 클래스를 스프링 빈으로 등록하여
+		@Controller 애노테이션이 지정된 클래스를 컨트롤러로 사용할 수 있도록 해준다.
+		
+		* org.springframework.servlet.mvc.method.annotation 패키지의
+			- RequestMappingHandlerMapping
+			- RequestMappingHandlerAdapter
+		
+		또한 이 태그는 JSON이나 XML에 대한 요청과 응답 처리를 위한 모듈이나 파라미터
+		데이터 바이딩 처리를 위한 ConversionService 등을 스프링 빈으로 등록 해준다. 
+	-->
+	<annotation-driven />
+
+	<!-- 
+		DispatcherServlet을 경유해 정적 리소스에 접근하기 위한 설정으로
+		정적 리소스란 Html, 이미지, CSS, JavaScript 파일 등을 의미한다.
+		아래 설정은 ContextRoot/resources/ 로 들어오는 정적 리소스 요청에
+		대해 ContextRoot/resources/ 디렉터리를 매핑한 것이다. 이 설정은
+		DispatcherServlet의 url-pattern을 "/"로 지정하여 DispatcherServlet이
+		정적 컨텐츠를 포함한 모든 요청을 처리할 수 있도록 설정해야 제대로 동작한다.
+	-->
+	<resources mapping="/resources/**" location="/resources/" />
+	
+	<!-- 
+		<context:component-scan /> 태그는 base-package에 지정한 패키지를 
+		기준으로 스프링이 컴포넌트를 스캔하여 자동으로 bean을 생성해 주는 설정으로
+		<context:annotation-config /> 태그가 수행하는 모든 것을 수행하며 여기에
+		더해 스프링이 자동으로 bean을 발견하여 선언하고 생성해 주는 설정이다. 
+		
+		다시 말해 Spring bean 설정 파일에 <bean> 태그를 사용해 클래스를 등록하지
+		않아도 스프링프레임워크가 아래 Annotation이 적용된 클래스를 찾아 annotation
+		기반 와이어링(스프링 DI 컨테이너에 등록하고 클래스 간의 관계를 맺어 주는)을
+		해주는 설정이다.
+		
+		컨트롤러 클래스(@Controller), DAO 클래스(@Repository), 
+		Service(@Service) 클래스가  스프링에 의해 스프링 DI 컨테이너에 등록된다.
+	-->	
+	<context:component-scan base-package="com.springstudy.bbs" />
+
+	<!-- 
+		## 1. HandlerMapping 정의하기 ##		
+		HandlerMapping은 클라이언트가 보낸 웹 요청 URL과 그 요청을 처리할 
+		컨트롤러를 매핑해 주는 클래스로 최초로 요청을 받은 DispatcherServlet이
+		그 요청을 어느 컨트롤러로 보내야 할지 HandlerMapping에게 의뢰해 요청을
+		처리할 컨트롤러를 선택하게 된다. HandlerMapping은 요청 URL을 참고해
+		요청을 처리할 컨트롤러를 결정하여 DispatcherServlet에게 전달하게 된다.
+		HandlerMapping을 지정하지 않으면 BeanNameUrlHandlerMappging과 
+		DefaultAnnotationHandlerMapping이 기본 적용된다.
+		
+		하지만 스프링 설정 파일에 <annotation-driven /> 태그를 설정하게 되면
+		@Controller 애노테이션이 지정된 클래스를 컨트롤러로 사용할 수 있도록 해주는
+		RequestMappingHandlerMapping과 RequestMappingHandlerAdapter를
+		스프링 빈으로 등록하게 되므로 이 예제는 이 두 클래스를 우선 사용되게 된다. 
+	-->	
+
+	<!-- 
+		## 2. Controller 정의하기 ##
+		<annotation-driven/>과 <context:component-scan />을 적용했기
+		때문에 Spring MVC Annotation 기반의 Bean을 선언하고 검색하게 되므로
+		Controller를 빈으로 정의하지 않아도 된다.
+	-->
+	
+	<!-- 
+		## 3. ViewResolver 정의하기 ##
+		컨트롤러로 부터 요청에 대한 처리 결과를 전달 받은 DispatcherServlet은
+		뷰 리졸버에게 논리적인 뷰 이름을 실제 뷰 구현체(JSP등)에 매핑하도록 요청하고
+		뷰 리졸버는 요청 결과를 표시할 실제 뷰 객체를 DispatcherServlet에게
+		전달한다. DispatcherServlet은 뷰 리졸버로 부터 전달 받은 뷰 객체에
+		컨트롤러로 부터 받은 모델 정보를 렌더링 하고 그 결과를 클라이언트에 응답한다.		
+		
+		뷰 리졸버는 컨트롤러로 부터 전달 받은 논리적인 뷰 이름을 가지고 실제 응답
+		결과를 생성할 뷰 객체를 구할 때 사용되며 실제로 사용될 뷰를 선택하는 역할을
+		한다. 만약 컨트롤러로 부터 전달된 뷰 이름이 main이라면 뷰 리졸버는 prefix와
+		suffix에 지정된 데이터를 조합해 /WEB-INF/index.jsp?body=views/main.jsp를
+		선택하게 된다.
+		
+		뷰 리졸버 구현체는 몇 가지가 있으며 뷰 리졸버를 별도로 지정하지 않으면
+		InternalResourceViewResolver가 기본 적용된다.
+		뷰 리졸버의 viewClass 속성에 뷰 리졸버가 생성할 뷰 객체를 지정할 수 있는데
+		이를 생략하면 InternalResourceView가 기본 적용된다.
+		InternalResourceView는 JSP, HTML과 같이 웹 애플리케이션의 내부 자원을
+		사용해 응답 결과를 만드는 객체로 속성에 모델을 지정하고 RequestDispatcher를
+		이용해 지정된 뷰에 전달(포워딩) 된다.
+
+		아래에서 viewClass 속성에 지정한 JstlView는 JSTL을 사용한 자원용 뷰 이다.
+		InternalResourceView의 자식 클래스로 스프링 메시지 자원 파일을 JSTL의
+		포맷 태그에서 사용할 수 있도록 해 준다. 뷰에서 JSTL을 사용한다면 별도로 
+		viewClass를 지정하지 않아도 ViewResolver는 JstlView를 반환한다.		
+	-->
+	<beans:bean id="viewResolver" class=
+		"org.springframework.web.servlet.view.InternalResourceViewResolver"
+		p:viewClass="org.springframework.web.servlet.view.JstlView"
+		p:prefix="/WEB-INF/index.jsp?body=views/"
+		p:suffix=".jsp"/>
+		
+	<!--
+		클라이언트의 요청이 특별한 처리 없이 단순히 뷰만 보여줘야 할 경우에
+		아래와 같이 뷰 전용 컨트롤러를 설정하여 뷰 페이지를 지정할 수 있다.
+			
+		<view-controller /> 태그는 뷰 전용 컨트롤러를 설정하는 태그로
+		어떤 요청이 특별한 비즈니스 로직 처리 없이 단순히 뷰만 보여줘야 할 필요가
+		있을 때 유용하게 사용할 수 있는 설정이다. 아래는 /writeForm, /boardWrite로
+		들어오는 요청에 대한 뷰를 writeForm으로 지정한 예로 이 설정 파일에 bean으로
+		등록한 ViewResolver의 prefix와 suffix가 적용된 뷰를 보여주는 설정이다. 
+		다시 말해 view-name 속성에 지정하는 뷰의 이름은 ViewResolver에서
+		prefix, suffix에 지정한 정보를 제외한 나머지를 지정하면 된다.
+		
+		<view-controller /> 태그의 path 속성에 지정한 경로와 동일한
+		요청 URI가 컨트롤러의 @RequestMapping에 POST 방식만 지정되어
+		있다면 HTTP Status 405 - Request method 'GET' not supported
+		예외가 발생한다.
+		
+		여러 개의 요청 URI에 같은 뷰를 적용하려면 아래와 같이 여러 번 지정하면 된다.
+	-->
+	<view-controller path="/writeForm" view-name="writeForm" />
+	<view-controller path="/boardWrite" view-name="writeForm" />
+	
+	<!--
+		Redirect View 설정
+		특정 URI에 대한 클라이언트의 요청을 다른 페이지로 Redirect 시켜야할 경우에
+		아래와 같이 리다이렉트 전용 컨트롤러를 설정할 수 있다.
+		
+		아래는 ContextRoot("/"), ContextRoot/index, ContextRoot/default로
+		들어오는 요청을 게시 글 리스트로 리다이렉트 시키는 예 이다.
+	-->
+	<view-controller path="/" view-name="redirect:/boardList" />
+	<redirect-view-controller path="/index" redirect-url="/boardList"/>
+	<redirect-view-controller path="/default" redirect-url="/boardList"/>
+	<view-controller path="loginForm" view-name="loginForm" />
+	<!--
+		아래는 ContextRoot/write로 들어오는 요청을 위에서 view-controller에
+		설정한 /writeForm 으로 리다이렉트 하는 예 이다.
+	-->
+	<redirect-view-controller path="/write" redirect-url="/writeForm"/>
+	<view-controller path="/writeFormMulti" view-name="writeFormMulti"/>
+	
+</beans:beans>

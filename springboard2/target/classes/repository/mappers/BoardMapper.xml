@@ -1,0 +1,402 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+	맵퍼의 namespace 속성은 맵핑 구문을 그룹핑 하는 역할을 한다.
+	여러 맵퍼에서 맵핑 구문의 id 속성의 값이 중복되더라도 namespace와
+	맵핑 구문의 id 속성에 지정한 값을 합쳐서 호출하기 때문에 맵핑 구문이
+	중복되지 않게 분류하여 관리할 수 있다.
+	테이블 이름을 바탕으로 namespace를 지정하고 맵핑 구문의 id 속성의
+	값은 SQL 문의 맥락에 따라서 명명하는 것이 일반적 이다.
+	
+	parameterType 속성에는 주로 SQL 문의 조건에 사용할 파라미터의
+	데이터 타입을 지정하는 속성으로 자바 원시 타입(기본 타입, String)과 자바빈,
+	Map과 같은 타입을 지정할 수 있다. resultType 속성도 parameterType
+	속성에서 지정한 타입을 많이 사용한다. parameterType과 resultType에
+	지정할 데이터 타입이 자바 원시 타입이면 생략가능하다.
+	
+	http://www.mybatis.org/mybatis-3/ko/index.html 참고
+-->
+<mapper namespace="com.springstudy.bbs.mapper.BoardMapper" >
+
+	<!--
+		한 페이지에 해당하는 게시 글 리스트, 검색리스트를 가져오는 맵핑 구문
+		
+		테이블의 컬럼명은 일반적으로 언더스코어 표기법("_")을 사용하는 경우가
+		많고 클래스의 인스턴스 맴버는 카멜표기법을 사용한다.
+		테이블의 컬럼명과 모델 클래스의 프로퍼티 이름이 다른 경우 아래와 같이
+		SELECT 쿼리에 별칭을 사용해 모델 클래스의 프로퍼티 이름과 동일하게
+		맞춰야 한다. 그렇지 않으면 오류는 발생하지 않지만 데이터를 읽어 올
+		수 없다. 하지만 MyBatis 설정 파일에서 <settings> 요소의 하부 요소로
+		<setting name="mapUnderscoreToCamelCase" value="true" />를
+		지정하면 별칭을 사용하지 않아도 언더스코어 표기법을 카멜 표기법으로
+		매핑해서 간편하게 자바 모델 객체로 변환할 수 있다.
+		
+		SELECT read_count AS readCount FROM springbbs
+		
+		아래는 테이블에 언더스코어 표기법으로 작성된 컬럼이 있기 때문에 이 컬럼은
+		별칭을 지정할 때 자바 도메인 객체의 프로퍼티와 동일하게 지정하였다.
+		이렇게 resultType에 Board를 지정하고 DAO 클래스에서 SqlSession의 
+		selectList() 메서드를 호출하면 List<Board> 객체로 반환된다.	  
+		
+		Oracle에서는 페이징 처리를 위해 의사컬럼인 ROWNUM을 사용했지만
+		MySQL은 검색된 데이터에서 특정 행 번호부터 지정한 개수 만큼 행을 읽어오는
+		LIMIT 명령을 제공하고 있다. LIMIT의 첫 번째 매개변수에 가져올 데이터의
+		시작 행을 지정하고 두 번째 매개변수에 가져올 데이터의 개수를 지정하면 된다.		
+		
+		DAO에서 현재 페이지에 해당하는 게시 글 리스트를 조회할 startRow와 num을 
+		HashMap에 저장해 넘겨줬기 때문에 parameterType="hashmap"
+		으로 설정하고  SQL 쿼리에서 LIMIT 명령 다음에 HashMap의 키로 지정한
+		#{startRow}와 #{num}을 지정하였다.
+		
+		아래에서 parameterType="hashmap"을 생략해도 map의 key 값으로
+		지정한 이름과 #{}에 지정한 이름이 같은 파라미터에 데이터가 바인딩 된다.
+		
+		게시 글 리스트와 검색 리스트 요청에 따라서 각각을 처리하기 위해 동적으로 
+		변환되는 SQL 쿼리를 작성해야 한다. 검색 리스트도 제목, 작성자, 내용을
+		기준으로 검색어가 포함된 검색 리스트만 구성하기 위해서 동적으로 변환되는 
+		SQL이 필요하기 때문에 각 상황에 맞게 조건절이 동적으로 생성되도록 했다.  
+	-->
+	<select id="boardList" resultType="Board" parameterType="hashmap">
+		SELECT 
+			no, 
+			title, 
+			writer, 
+			content, 
+			reg_date AS regDate,
+			read_count AS readCount,
+			pass,
+			file1 
+		FROM springbbs
+		<!-- 
+			WHERE 절을 동적으로 생성하는 요소
+			where 요소는 하위 요소(조건)에서 생성한 내용이 있으면 WHERE 절을
+			추가하고 그렇지 않으면 무시한다. 또한 WHERE 다음에 바로 AND나 OR가
+			나타나면 그 또한 무시하여 AND나 OR를 지워준다.
+			아래는 where 요소의 하위 요소인 if 요소가 true가 되면 SQL문에 WHERE
+			절을 추가해 주기 때문에 WHERE를 생략하고 다음 문장부터 추가하였다.
+			
+			조건절에서 DAO로 부터 받은 파라미터를 지정할 때는 ${}를 사용하지 않고
+			파라미터 이름만 지정해야 하며 문자열을 사용할 때는 쌍 따옴표("")나
+			홑 따옴표('')로 감싸줘야 한다.		
+			
+			SQL 파라미터로 사용할 데이터가 여러 개라 BoardDao의 boardList()
+			메서드에서 이 맵핑 구문을 호출할 때  HashMap에 담아 전달하였다.
+			맵핑 구문에서 HashMap의 데이터를 조건절 이나 SQL 파라미터로 지정할 때는
+			HashMap에 저장할 때 사용한 키의 이름을 지정하면 된다.
+			
+			만약 WHERE 절에 수치 데이터의 대소 비교를 하는 부등호가 들어가는 경우라면
+			이 부등호는 XML에서 태그로 사용되는 문자이기 때문에 문제가 발생한다. 
+			이럴 경우에는 아래와 같이 CDATA Section으로 묶어 주면 된다.
+			CDATA는 Character DATA라는 뜻으로 CDATA Section 안에 있는 데이터는
+			해석(Parsing)하지 말고 문자 데이터 그대로 처리하라는 의미이다. 이렇게 
+			SQL 쿼리문에 XML 태그와 같은 문자를 사용해야 할 경우 아래와 같이 
+			CDATA Section 안에 기술되도록 해야 한다.    
+		
+			<![CDATA[
+				price <= #{price}
+			]]>
+		-->	
+		<where>	
+			<if test="type == 'title'">
+				title LIKE CONCAT('%', #{keyword}, '%')
+			</if>
+			<if test="type == 'writer'">
+				writer LIKE CONCAT('%', #{keyword}, '%')
+			</if>
+			<if test="type == 'content'">
+				content LIKE CONCAT('%', #{keyword}, '%')
+			</if>	
+		</where>
+		ORDER BY no DESC
+		LIMIT #{startRow}, #{num}
+	</select>
+	
+	<!--		
+		전체 게시 글 수와 검색 리스트에 대한 게시 글 수를 반환하는 맵핑 구문	
+
+		게시 글 리스트와 검색 리스트 요청에 따라서 페이징 처리에 사용하는 게시 글
+		수를 반환해야 하기 때문에 아래 상황에 맞게 동적으로 변환되는 SQL 쿼리를
+		작성해야 한다. 게시 글 리스트 요청일 때는 전체 게시 글의 수를 반환되도록
+		하고 검색 리스트일 때는 제목, 작성자, 내용을 기준으로 검색어가 포함된
+		게시 글 수가 반환될 수 있도록 구현해야 한다.
+		
+		게시 글 리스트 요청 : type == null, keyword == null
+		게시 글 검색 요청 : type == title 일 때 제목으로 검색, 
+					type == writer 일 때 글쓴이로 검색, 
+					type == content 일 때 게시 글 내용으로 검색		
+		
+		동적 SQL 참고 : 
+		http://www.mybatis.org/mybatis-3/ko/dynamic-sql.html
+		
+		DAO에서 검색에 필요한 type과 keyword를 HashMap에 저장해
+		넘겨줬기 때문에 parameterType="hashmap"으로 설정하고 
+		SQL 쿼리의 파라미터를 HashMap의 키 이름으로 지정하였다.		
+		
+		SQL 쿼리의 결과가 정수이기 때문에 resultType은 int형을 지정했다.
+		아래에서 resultType을 생략하면 예외가 발생한다.
+				
+		아래에서 parameterType="hashmap"을 생략해도 map의 key 값으로
+		지정한 이름과 #{}에 지정한 이름이 같은 파라미터에 데이터가 바인딩 된다.		
+	-->
+	<select id="getBoardCount" parameterType="hashmap" resultType="int">
+		SELECT 
+			COUNT(no) 
+		FROM springbbs
+		<!-- 
+			WHERE 절을 동적으로 생성하는 요소
+			where 요소는 하위 요소(조건)에서 생성한 내용이 있으면 WHERE 절을
+			추가하고 그렇지 않으면 무시한다. 또한 WHERE 다음에 바로 AND나 OR가
+			나타나면 그 또한 무시하여 AND나 OR를 지워준다.
+			아래는 where 요소의 하위 요소인 if 요소가 true가 되면 SQL문에 WHERE
+			절을 추가해 주기 때문에 WHERE를 생략하고 다음 문장부터 추가하였다.
+			
+			조건절에서 DAO로 부터 받은 파라미터를 지정할 때는 #{}를 사용하지 않고
+			파라미터 이름만 지정해야 하며 문자열을 사용할 때는 쌍 따옴표("")나
+			홑 따옴표('')로 감싸줘야 한다.		
+			
+			SQL 파라미터로 사용할 데이터가 여러 개라 BoardDao의 getBoardCount()
+			메서드에서 이 맵핑 구문을 호출할 때  HashMap에 담아 전달하였다.
+			맵핑 구문에서 HashMap의 데이터를 조건절 이나 SQL 파라미터로 지정할 때는
+			HashMap에 저장할 때 사용한 키의 이름을 지정하면 된다.
+			
+			만약 WHERE 절에 수치 데이터의 대소 비교를 하는 부등호가 들어가는 경우라면
+			이 부등호는 XML에서 태그로 사용되는 문자이기 때문에 문제가 발생한다. 
+			이럴 경우에는 아래와 같이 CDATA Section으로 묶어 주면 된다.
+			CDATA는 Character DATA라는 뜻으로 CDATA Section 안에 있는 데이터는
+			해석(Parsing)하지 말고 문자 데이터 그대로 처리하라는 의미이다. 이렇게 
+			SQL 쿼리문에 XML 태그와 같은 문자를 사용해야 할 경우 아래와 같이 
+			CDATA Section 안에 기술되도록 해야 한다.    
+		
+			<![CDATA[
+				price <= #{price}
+			]]>
+		-->	
+		<where>	
+			<if test="type == 'title'">
+				title LIKE CONCAT('%', #{keyword}, '%')
+			</if>
+			<if test="type == 'writer'">
+				writer LIKE CONCAT('%', #{keyword}, '%')
+			</if>
+			<if test="type == 'content'">
+				content LIKE CONCAT('%', #{keyword}, '%')
+			</if>	
+		</where>	
+	</select>
+	
+	<!--
+		게시 글 하나를 가져오는 맵핑 구문
+		
+		resultMap 속성을 사용해 아래에서 resultMap 태그로 정의한 id를 지정하면 SQL
+		쿼리에 컬럼명의 별칭을 사용하지 않고 자바 모델 객체로 변환할 수 있다.
+		또는 MyBatis 설정 파일에서 <settings> 요소의 하부 요소로
+		<setting name="mapUnderscoreToCamelCase" value="true" />를
+		지정하면 resultMap을 사용하지 않아도 언더스코어 표기법을 카멜 표기법으로
+		매핑해서 간편하게 자바 모델 객체로 변환할 수 있다.
+		
+		root-context.xml에서 SqlSessionFactoryBean를 Bean으로 정의할 때 
+		typeAliasesPackage를 com.springstudy.bbs.domain으로 지정했기
+		때문에 resultType에 클래스 이름만 지정했다.
+		
+		DAO에서 no에 해당하는 게시 글을 조회할 때 기본형인 no를 selectOne()
+		메서드의 두 번째 인수로 지정했기 때문에 parameterType은 생략할 수 있다.
+		
+		SQL문의 조건에 사용할 파라미터는 아래와 같이 #{} 로 감싸서 지정하면 된다.
+	-->
+	<select id="getBoard" resultType="Board" resultMap="boardResultMap">
+		SELECT 
+			* 
+		FROM springbbs 
+		WHERE no = #{no}
+	</select>
+	
+	<!-- 
+		게시 글을 테이블에 추가하는 맵핑 구문
+			
+		아래는 DAO 클래스의 insertBoard(Board board) 메서드에서
+		사용하는 맵핑 구문으로 parameterType을 Board 타입으로 지정했다.
+		parameterType에 모델 클래스 타입을 지정하는 경우 VALUES()에 
+		지정하는 값은 getter 메서드를 지정하는 것이 아니라 클래스의 프로퍼티
+		(인스턴스 변수)를 #{}로 감싸서 지정하면 MyBatis가 알아서 처리해 준다.
+		 
+		SqlSessionTemplate의 insert() 메서드의 반환 타입이 int 이므로
+		resultType은 생략 가능하다.
+		
+		테이블에 하나의 레코드를 INSERT 할때 자동으로 증가되는 컬럼이나
+		Sequence를 사용하는 컬럼의 값을 읽어와야 할 때도 있다.
+		보통 자동 증가되는 컬럼의 값은 데이터가 INSERT 된 후에 읽어오고
+		Sequence일 경우 INSERT 이전에 값을 읽어와야 한다.
+		이렇게 INSERT 작업을 하면서 생성된 키의 값을 읽어와야 할 경우
+		아래와 같이 useGeneratedKeys="true"를 지정하고 자동 생성된
+		키의 값을 설정할 자바 모델 객체의 프로퍼티 이름을 keyProperty에
+		지정하면 Board 객체의 no 프로퍼티에 값을 설정해 준다.	
+	-->
+	<insert id="insertBoard" parameterType="Board"
+		useGeneratedKeys="true" keyProperty="no">
+		INSERT INTO springbbs(title, writer, content, 
+				reg_date, read_count, pass, file1)
+				
+			VALUES(#{title}, #{writer}, #{content}, 
+				SYSDATE(), #{readCount}, #{pass}, #{file1})
+	</insert>
+	
+	<!--
+		게시 글을 테이블에서 no에 해당하는 비밀번호를 가져오는 맵핑 구문
+	
+		아래는 DAO 클래스의 isPassCheck(int no, String pass) 메서드에서
+		사용하는 맵핑 구문으로 DAO에서 게시 글 번호인 no에 해당하는 게시 글의
+		비밀번호를 조회할 때 selectOne() 메서드의 두 번째 인수로 기본형인 no를
+		인수로 지정했기 때문에 parameterType은 생략할 수 있다.
+		
+		
+		parameterType을 Map 타입으로 지정했다.
+		DAO에서 현재 페이지에 해당하는 상품 리스트를 조회할 start와 num을 
+		HashMap에 저장해 넘겨줬기 때문에 parameterType="hashmap"
+		으로 설정하고 SQL 쿼리의 파라미터를 HashMap의 키로 지정하였다.	 
+		
+		DAO에서 no에 해당하는 게시 글의 비밀번호를 조회할 때 기본형인 no를 
+		selectOne() 메서드의 두 번째 인수로 지정했기 때문에 parameterType은
+		생략할 수 있다.
+		
+		SQL문의 조건에 사용할 파라미터는 아래와 같이 #{} 로 감싸서 지정하면 된다. 
+	-->
+	<select id="isPassCheck" resultType="String">
+		SELECT 
+			pass
+		FROM springbbs
+		WHERE no = #{no}
+	</select>
+	
+	<!--
+		게시 글을 테이블에서 수정하는 맵핑 구문	
+		
+		아래는 DAO 클래스의 updateBoard(Board board) 메서드에서
+		사용하는 맵핑 구문으로 parameterType을 Board 타입으로 지정했다.
+		parameterType에 모델 클래스 타입을 지정하는 경우 VALUES()에 
+		지정하는 값은 getter 메서드를 지정하는 것이 아니라 클래스의 프로퍼티
+		(인스턴스 변수)를 #{}로 감싸서 지정하면 MyBatis가 알아서 처리해 준다. 
+		
+		SqlSessionTemplate의 update() 메서드의 반환 타입이 int 이므로
+		resultType은 생략 가능하다.  
+	-->
+	<update id="updateBoard" parameterType="Board">
+		UPDATE springbbs 
+			SET title = #{title}, content = #{content},
+				reg_date = SYSDATE()
+		WHERE no = #{no}
+	</update>
+
+	<!--
+		게시판 테이블에서 no에 해당하는 게시 글을 삭제하는 맵핑 구문	
+		
+		아래는 DAO 클래스의 deleteBoard(int no) 메서드에서 사용하는
+		맵핑 구문으로 parameterType은 int 형이므로 생략했다.
+		
+		SqlSessionTemplate의 delete() 메서드의 반환 타입이 int 이므로
+		resultType은 생략 가능하다.  
+	-->
+	<delete id="deleteBoard">
+		DELETE FROM springbbs
+		WHERE no = #{no}
+	</delete>
+
+	<!--
+		게시판 테이블에서 no에 해당하는 게시 글의 읽은 횟 수를 증가시키는 맵핑 구문	
+		
+		아래는 DAO 클래스의 deleteBoard(int no) 메서드에서 사용하는
+		맵핑 구문으로 parameterType은 int 형이므로 생략했다.
+		
+		SqlSessionTemplate의 update() 메서드의 반환 타입이 int 이므로
+		resultType은 생략 가능하다.  
+	-->
+	<update id="incrementReadCount">
+		UPDATE springbbs
+			SET read_count = read_count + 1
+		WHERE no = #{no}
+	</update>
+	
+	
+	<!-- 업로드된 다중 파일 정보를 files 테이블에 추가하는 매핑 구문 -->
+	<insert id="insertFileNames" parameterType="FileName" useGeneratedKeys="true" keyProperty="no" >
+		insert into files(file2, bbs_no) values
+		<foreach item="fileName" collection="list" separator=",">
+			(#{fileName.file2}, #{fileName.bbsNo})
+		</foreach>
+	</insert>
+	
+	
+	<select id="replyList" resultType="Reply">
+		select 
+			no,
+			bbs_no as bbsNo,
+			reply_content as replyContent,
+			reply_writer as replyWriter,
+			reg_date as regDate
+		from reply where bbs_no = #{no}
+	</select>
+	
+	<update id="updateRecommend">
+		UPDATE springbbs
+			SET
+			<if test="recommend == 'recommend'">		
+				recommend=recommend + 1
+			</if>
+			<if test="recommend == 'thank'">
+				thank = thank + 1
+			</if>
+		WHERE no = #{no}
+	</update>
+	
+	
+	<select id="getRecommend" resultType="Board">
+		select recommend, thank
+		from springbbs
+		where no = #{no}
+	</select>
+	
+	
+	<insert id="addReply" parameterType="Reply">
+		insert into reply(bbs_no, reply_content, reply_writer, reg_date)
+		values(#{bbsNo}, #{replyContent}, #{replyWriter}, SYSDATE())
+	</insert>
+	
+	
+	<update id="updateReply" parameterType="Reply">
+		update reply set reply_content = #{replyContent},
+			reg_date = SYSDATE()
+		where no = #{no}
+	</update>
+	
+	<delete id="deleteReply">
+		delete from reply where no = #{no}
+	</delete>
+	
+	<!--
+		Board 클래스의 프로퍼티와 테이블의 컬럼을 맵핑하는 ResultMap
+		 
+		테이블에 언터스코어 표기법으로 작성된 컬럼이 존재하면 도메인 객체의
+		카멜케이스된 프로퍼티를 통해 컬럼의 값을 제대로 읽어오지 못한다.
+		아래와 같이 resultMap을 정의해 테이블의 컬럼과 도메인 객체의
+		프로퍼티를 설정하면 제대로 읽어 올 수 있다.
+		
+		resultMap 태그에 type 속성은 쿼리 결과를 매핑할 자바 도메인 객체를
+		지정하고 그 하부에 <id> 태그를 사용해 기본키 컬럼을 지정한다.
+		나머지 컬럼은 <result> 태그를 사용해 지정하면 도메인 객체로 맵핑할 수 있다.  
+	-->
+	<resultMap id="boardResultMap" type="Board">
+		<id property="no" column="no" />
+		<result property="title" column="title" />
+		<result property="writer" column="writer" />
+		<result property="content" column="content" />
+		<result property="regDate" column="reg_date" />
+		<result property="regCount" column="reg_count" />
+		<result property="pass" column="pass" />
+		<result property="file1" column="file1" />
+	</resultMap>
+
+</mapper>	
+
+
+

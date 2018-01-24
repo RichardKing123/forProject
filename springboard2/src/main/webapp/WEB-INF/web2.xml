@@ -1,0 +1,339 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+	xmlns="http://java.sun.com/xml/ns/javaee" 
+	xsi:schemaLocation="http://java.sun.com/xml/ns/javaee 
+		http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd" version="3.0">
+
+  <!-- 
+  	게시판 검색 기능 구현
+  	- Spring MVC와 MyBatis를 활용한 웹 애플리케이션 구현 
+  	- Annotation 기법을 이용한 Controller 맵핑하기,
+  	- commons-dbcp2를 이용해 JNDI 방식의 DBCP 적용
+  	- MyBatis를 활용한 게시판 CRUD - 게시 글 쓰기, 리스트 보기, 상세보기, 수정, 삭제  
+  	- 게시 글 리스트 페이징 처리, 게시 글 읽은 횟 수 처리	
+  	- 게시 글 검색 기능
+  -->
+  <!--
+  SpringSTS에서 SpringLegacyProject로 SpringMVCProject 만들기
+  
+  이 예제는 SpringSTS에서 Spring Legacy Project로 Spring MVC Project를
+  생성하고 설정하는 방법과 Spring MVC와 MyBatis를 활용해 웹 애플리케이션을 
+  구현하는 방법을 설명하기 위한 예제이다.
+  
+  Spring Legacy Project 메뉴를 통해 Spring MVC Project를 생성하게 되면
+  JSP의 Dynamic Web Project와는 전혀 다른 프로젝트 구조를 가진다.
+  Spring MVC Project가 이런 프로젝트 구조를 가질 수 있는 것은 web.xml에서
+  리스너와 애플리케이션 초기화 파라미터, 그리고 서블릿 초기화 파라미터 설정을 통해
+  스프링이 필요로 하는 bean 설정 파일의 위치를 지정해 사용하기 때문이다.
+    
+  1. 먼저 File -> New 메뉴에서 Spring Legacy Project 선택하거나 Package Explorer의
+      빈 공간에 마우스 오른쪽을 클릭해 나타나는 컨텍스트 메뉴의 New 메뉴에서 Spring
+     Legacy Project를 선택하여 나타나는 New Spring Legacy Project 대화상자에서
+     Spring MVC Project를 선택하고 프로젝트 이름을 springstudy-bbs02로 지정한 후
+     "Next" 버튼을 클릭한다. 이어서 나타나는 대화상자에서 top-level package를
+     com.springstudy.bbs로 입력하고 "Finish" 버튼을 클릭해 프로젝트를 생성한다.
+
+  2. 스프링프레임워크 버전 및  의존 라이브러리 버전, Artifact Id 등을 변경한다.     
+    Spring MVC Project를 생성하면 스프링프레임워크 버전 3.1.1이 기본 설정되어 있다.
+     우리는 스프링프레임워크 버전 4.2.4를 사용할 것이므로 Maven을 통해 버전을 수정해야
+     한다. 또한 테스트, 로깅. AOP, MyBatis와 Spring MVC 연동을 위해 MyBatis에서
+     제공하는 라이브러리 의존성도 추가해야 한다.  
+    pom.xml을 더블클릭해서 선택하고 Overview 탭에서 Properties 부분을 아래와 같이
+     변경해 준다. 만약 스프링프레임워크 버전을 변경한다면 org.springframework-version
+     부분을 더블 클릭해 Value의 값을 "4.2.4.RELEASE"로 지정한 후 OK 버튼을 클릭하면 된다.
+     나머지 의존 라이브러리도 아래를 참고해 property를 설정하면 된다.     
+    
+	<properties>
+		<java-version>1.8</java-version>
+		<org.springframework-version>4.2.4.RELEASE</org.springframework-version>
+		<log4j-version>1.2.17</log4j-version>
+		<jstl-version>1.2</jstl-version>
+		<junit-version>4.7</junit-version>
+		<mysql-version>5.1.45</mysql-version>
+		<mybatis-version>3.4.5</mybatis-version>
+		<mybatis-spring-version>1.3.1</mybatis-spring-version>
+	</properties>
+	
+	그리고 이 Overview 탭에서 Artifact Id를  springstudy-bbs02로 수정하자.
+	
+  3. 메이븐을 통해 스프링 MVC 관련 라이브러리 의존성을 설정한다.
+    pom.xml의 Dependencies 탭을 선택하고 "Add" 버튼을 클릭해 아래 모듈을
+     의존 설정하면 메이븐이 의존 관계에 있는 모듈을 자동으로 등록해서 Spring MVC와
+    MyBatis를 연동하기 위한 기본적인 라이브러리 의존 설정을 할 수 있다.       
+     
+      - spring-context 모듈        
+      - spring-webmvc 모듈 
+      - spring-jdbc 모듈
+      - mybatis 모듈
+      - mybatis-spring 모듈
+      - commons-dbcp2 모듈
+	  - mysql-connector-java 모듈
+      - 기타 필요한 라이브러리(jstl, log4j, Logging 등등)	
+      
+    참고로 mybatis 모듈은 MyBatis3 프레임워크를 애플리케이션에서 사용하기 위해 지원하는
+    클래스 라이브러리 이고 mybatis-spring 모듈은 Spring MVC와 MyBatis 연동을
+    지원하기 위한 클래스 라이브러리 이다.
+    MyBatis3의 최신 버전은 3.4.5이며 mybatis-spring 최신 버전은 1.3.1 이다.
+   
+   * MyBatis3 프레임워크와 스프링프레임워크를 연동하는 방법과 매퍼 작성 방법에 대한
+    자세한 내용은 아래의 파일을 참고하기 바란다. 
+      
+      - Spring Bean 설정
+      src/main/webapp/WEB-INF/spring/root-context.xml
+      
+      - MyBatis 코드로 변환하기 위한  MyBatis 설정파일
+      src/main/resources/mybatis-config.xml
+      
+      - MyBatis 코드로 변환하기 위한 Mapper 설정파일
+      src/main/resources/repository.mappers/매퍼설정 파일        
+
+  4. Java Build Path와 Compiler 등을 변경한다.
+    Spring MVC Project를 생성하면 자바 버전 1.6, Dynamic Web Module 2.5가
+    기본 설정되어 있다. 우리는 자바 1.8 이상과 Dynamic Web Module 3.0을
+    사용할 것이므로 Configure Build Path를 통해 Java Build Path의 자바 버전과
+    Java Compiler 버전을 1.8로 설정하고 Server Runtime 설정을 변경해야 한다. 
+    그리고 프로젝트를 생성할 때 패키지의 3번째 단계에 지정한 bbs가 ContextRoot와
+    Artifact Id로 사용되기 때문에 이를 변경해야 할 필요도 있을 것이다.
+    
+    * Configure Build Path에서 자바 버전과 Dynamic Web Module 변경하기
+     새로 생성한 프로젝트 springstudy-bbs02에 마우스 오른쪽 버튼을 클릭해
+     나타나는 컨텍스트 메뉴에서 "Build Path" -> "Configure Build Path"를
+     선택하여 나타나는 Properties for springstudy-bbs02 대화상자에서
+     다음과 같이 설정한다.
+
+     - Java Build Path 설정
+      Java Build Path 선택 -> JRE System Library 선택 -> Edit 버튼을 클릭
+      Edit Libray 대화상자에서 Workspace default JRE를 선택하고 Finish 클릭
+       한 후 Apply 버튼을 클릭한다.
+
+     - Java Compiler 설정
+      Java Compiler 선택 -> Enalbe project specific settings 선택 해제
+       우측의 Confiqure Workspace Settings 선택하여 나타나는 대화상자에서
+      Java Build 설정에 지정한 버전을 선택하고 Apply 버튼을 클릭하면
+       다시 이전 대화상자로 돌아오는데 여기서도 Apply 버튼 클릭
+
+     - Dynamic Web Module 설정
+      Project Facets 선택 -> 우측의 Dynamic Web Module 3.0 선택 -> Java도
+      Java Build Path 설정에서 지정한 버전과 동일한 버전을 선택한다.
+       그리고 우측의 Runtimes 탭을 선택하여 Apache Tomcat v7.0을 선택하고
+      Apply 버튼을 클릭한다.
+       
+     - Dynamic Web Module을 3.0으로 변경 했다면 web.xml의 <web-app> 태그에서
+       version과 XML 스키마 정의 파일(xsd)의 버전도 아래와 같이 3.0으로 변경하자.
+       
+       version="3.0"
+       http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd
+       
+     - Context root 변경
+      Web Project Settings 선택 -> 우측의 Context root에 springstudy-bbs02를
+       입력하고 Apply 버튼을 클릭한다.  
+      
+  5. web.xml에 스프링이 제공하는 프런트 컨트롤러인 DispatcherServlet을 서블릿으로
+     등록하고 요청 처리를 위한 서블릿 매핑을 설정한다. 기본적으로 Spring MVC Project를
+     생성하면 Spring MVC에 필요한 bean 설정 파일이 서블릿 초기화 파라미터로 설정되어
+     있다. 또한  Spring MVC 외에 필요한 bean 설정은 별도의 파일로 분리되어 설정할 수
+     있도록 웹 애플리케이션 초기화 파라미터와 리스너가 설정되어 있다. 이외에도 추가로 
+     스프링이 제공하는 Character Encoding Filter 등을 설정할 수 있다. 
+
+  6. Spring Web MVC 설정 파일을 작성한다.
+     스프링이 제공하는 프론트 컨트롤러인 DispatcherServlet은 SpringWebMVC 설정
+     파일을 자신의 서블릿 이름에 -servlet.xml을 추가한 파일을 /WEB-INF 디렉터리에서
+     찾아 이 xml 파일에 정의된 정보를 바탕으로 애플리케이션 컨텍스트를 생성하게 된다.
+     대규모 애플리케이션 개발에서는 스프링 설정을 각각의 성격에 맞게 개별적으로 작성하여
+     관리하는 경우가 대부분이다. 보통은 SpringWebMVC 관련 설정과 이외의 설정을
+     각각의 용도에 맞게 분할하여 작성한다. 분할한 설정 파일을 스프링이 인식할 수 있도록
+     지정하는 방법은 아래의 Listener와 웹 애플리케이션 초기화 파라미터, 서블릿 초기화
+     파라미터를 참고하기 바란다. 
+            
+      - SpringMVC 관련 설정(annotation, viewResolver 등등)
+      - bean 정의 및 의존 설정(DBCP, MyBatis, 기타 애플리케이션에서 필요한 Bean 등등)
+      - resource 관련 설정
+
+  7. 실제 요청을 처리할 Controller 클래스를 구현한다.
+     이때 Service 계층, DataAccess 계층의 클래스 등은 Interface 규칙을 적용해
+     구현하고 View 페이지를 같이 구현한다.
+    DAO에서 MyBatis가 지원하는 SqlSessionTemplate를 사용해 DB 작업을 하게
+     되는데 DAO를 작성하기에 앞서 아래와 같은 작업을 먼저 처리해야 한다.
+    
+    - MyBatis 설정 파일 작성(mybatis-config.xml, 생략가능)
+      MyBatis-스프링프레임워크를 연동할 때는 SqlSessionFactory 객체를 생성하기
+       위해 mybatis-spring 모듈에서 제공하는 SqlSessionFactoryBean을 스프링
+      Bean 설정 파일(root-context.xml)에 Bean으로 등록하고 필요한 프로퍼티를
+       설정할 수 있기 때문에 MyBatis 설정 파일은 생략할 수 있다.
+       
+    - SQL을 분리한 Mapper 작성(Mapper XML 또는 Mapper Interface)
+  -->	
+    
+  <!-- Listener와 웹 애플리케이션 초기화 파라미터 설정 -->
+  <!-- 
+  	ContextLoaderListener는 서블릿 리스너로 DispatcherServlet에 의해
+  	생성된 애플리케이션 컨텍스트와 함께 또 다른 스프링 애플리케이션 컨텍스트들을
+  	로드하여 컨테이너에 적재 시킨다. 비즈니스 로직을 처리하는 클래스 즉 서비스 계층
+  	또는 데이터 액세스 계층 등의 스프링 설정 파일을 분리하기 위해 web.xml에
+  	ContextLoaderListener를 리스너 클래스로 설정하였다.
+  	
+  	ContextLoaderListener에 로드해야 할 스프링 설정 파일을 알려주어야 하는데
+  	별도로 지정하지 않으면 WEB-INF 폴더에서 applicationContext.xml을 찾는다.
+  	만약 분리해야 할 스프링 설정 파일이 하나가 아니거나 다른 이름으로 설정하고 싶다면
+  	아래와 같이 <context-param> 태그를 사용해	애플리케이션 초기화 파라미터를
+  	통해 ContextLoaderListener에게 로드해야 할 스프링 설정 파일을 알려주어야 한다.
+  	
+  	설정 파일이 여러 개인 경우 콤마(","), 공백(" "), 탭("\t"), 줄 바꿈("\n"), 
+  	세미콜론(";") 등을 사용해 각각의 파일을 구분하여 지정할 수 있다. 
+  	파라미터 이름은 반드시 contextConfigLocation으로 지정해야 한다.
+  	
+  <context-param>
+  	<param-name>contextConfigLocation</param-name>
+  	<param-value>
+  		/WEB-INF/applicationConfig-context.xml
+  		classpath:resources/resources-context.xml
+  		classpath:resources/dataSouce.xml
+  	</param-value>
+  </context-param>
+    
+    ContextLoaderListener는 ServletContextListener를 구현하고
+  	ContextLoader 클래스를 상속한 클래스로 ServletContext 인스턴스가 생성될 때
+  	즉 톰캣 서버가 웹 애플리케이션을 로드 할 때 ContextLoaderListener가 구현한
+  	contextInitialized() 메서드가 호출되고 이 메서드 안에서 ContextLoader 클래스로
+  	부터 상속받은 initWebApplicationContext()를 호출해서 WebApplicationContext를
+  	생성하게 된다. 이로써 ContextLoaderListener는 DispatcherServlet이 자신의 서블릿
+  	초기화 파라미터의 contextConfigLocation에 지정한 /WEB-INF/spring/appServlet
+  	/servlet-context.xml 파일을 읽어 애플리케이션 컨텍스트를 생성하기 전에 웹
+  	애플리케이션 초기화 파라미터의 contextConfigLocation에 지정한 /WEB-INF/spring
+  	/root-context.xml 파일을 먼저 읽어 WebApplicationContext를 생성하게 된다.
+  	
+  	아래는 SpringProject에서  SpringMVCProject로 프로젝트를 생성하면
+  	Spring STS가 기본적으로 생성해 주는 애플리케이션 초기화 파라미터 설정이다.
+  -->
+	<context-param>
+		<param-name>contextConfigLocation</param-name>
+		<param-value>/WEB-INF/spring/root-context.xml</param-value>
+	</context-param>
+	<listener>
+		<listener-class>
+			org.springframework.web.context.ContextLoaderListener
+		</listener-class>
+	</listener>
+
+  <!-- 
+  	DispatcherServlet은 스프링 MVC의 핵심으로 스프링 MVC의 프론트 컨트롤러
+  	역할을 담당한다. 다른 서블릿과 마찬가지로 DispatcherServlet도 서블릿으로
+  	동작하기 위해서는 웹 애플리케이션의 배포서술자인 web.xml에 등록해야 한다.
+  	스프링 MVC에서는 클라이언트로부터 들어오는 모든 요청은 DispatcherServlet이
+  	받고 웹 요청 URI에 대응하는 각각의 처리는 담당 컨트롤러에 위임해 처리하게 된다.
+  	
+  	DispatcherServlet의 이름인 appServlet에 -servlet.xml을 추가한
+  	파일 이름이 컨테이너에 적재되는 스프링 설정 파일의 기본 이름이 된다. 
+  	appServlet-servlet.xml의 이름을 가진 스프링 설정 파일을 WEB-INF 
+  	폴더에 저장하면 DispatcherServlet에 의해 자동으로 컨테이너에 적재된다.
+  	즉 DispatcherServlet은 자신의 이름으로 지정된 appServlet과 -servlet.xml을
+  	추가한 appServlet-servlet.xml 파일을 WEB-INF에서 찾아 이 XML 파일에
+  	정의된 정보를 바탕으로 애플리케이션 컨텍스트를 생성하게 된다.
+  	
+  	만약 DispatcherServlet 이름을 바탕으로 한 기본 스프링 설정 파일을 WEB-INF
+  	폴더가 아닌 다른 위치에 저장하거나 다른 이름의 설정 파일을 사용하고자 한다면
+  	아래와 같이 DispatcherServlet의 서블릿 초기화 파라미터를 통해 
+  	DispacherServlet에게 알려주어야 한다. 또한 설정 파일이 한 개가 아니라 여러 개인 
+  	경우 <param-value> 태그에 설정 파일의 목록을 아래와 같이 지정할 수 있다.
+  	
+  	설정 파일이 여러 개인 경우 콤마(","), 공백(" "), 탭("\t"), 줄 바꿈("\n"), 
+  	세미콜론(";") 등을 사용해 각각의 파일을 구분하여 지정할 수 있으며 
+  	파라미터 이름은 반드시 contextConfigLocation으로 지정해야 한다.
+  <servlet>
+  	<servlet-name>appServlet</servlet-name>
+  	<servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+  		<init-param>
+			<param-name>contextConfigLocation</param-name>
+			<param-value>
+				/WEB-INF/mainServlet/spring-context.xml
+				classpath:resources/spring-context02.xml
+				file:d:\spring\spring-context03.xml</param-value>
+		</init-param>
+  	<load-on-startup>1</load-on-startup>
+  </servlet>
+  
+  아래는 SpringProject에서  SpringMVCProject로 프로젝트를 생성하면
+  Spring STS가 기본적으로 생성해 주는 DispatcherServlet의 서블릿 설정이다.
+  -->
+  <!-- 
+	서블릿 클래는 최초 요청이 들어올 때 톰갯 서버에 의해 서블릿 클래스가 로딩되고
+	인스턴스화 된다. 그리고 서블릿 초기화 작업이 이루어지고 서블릿 컨테이너에 담겨
+	서블릿으로 동작하게 된다. 이렇게 서블릿 클래스는 최초 요청이 들어올 때 
+	클래스 로딩 -> 인스턴스화 -> 서블릿 초기화	작업을 거치므로 맨 처음 실행될 때
+	보통의 실행보다 많은 시간이 걸리게 되는데 이런 문제를 해결하기 위해
+	<load-on-startup>을 설정하여 톰캣이 실행되면서 서블릿을 초기화 하도록
+	설정할 수 있다. <load-on-startup> 에 지정하는 값이 0 보다 크면 톰갯이
+	실행되면서 	서블릿을 초기화 하게 되는데 이 값이 0보다 크고 가장 작은 정수 값을
+	가진 서블릿이 우선 순위가 제일 높다. 다시 말해 <load-on-startup>에 지정된
+	값이 1, 2, 3의 값을 가진 서블릿이 있다면 가장 작은 1의 값을 지정한 서블릿이
+	제일 먼저 초기화 된다. 같은 값을 가진 서블릿이 존재 한다면 먼저 정의된 서블릿이
+	먼저 초기화 된다.	
+  -->    	
+  <servlet>
+	<servlet-name>appServlet</servlet-name>
+	<servlet-class>
+		org.springframework.web.servlet.DispatcherServlet</servlet-class>
+	<init-param>
+		<param-name>contextConfigLocation</param-name>
+		<param-value>
+			/WEB-INF/spring/appServlet/servlet-context.xml
+		</param-value>
+	</init-param>
+	<load-on-startup>1</load-on-startup>
+  </servlet>
+	
+  <!-- 
+	아래는 ContextRoot 들어오는 .jsp 요청을 제외한 모든 요청을
+	DispatcherServlet가 받을 수 있도록 url-pattern을 지정한 것이다.
+  -->	
+  <servlet-mapping>
+	<servlet-name>appServlet</servlet-name>
+	<url-pattern>/</url-pattern>
+  </servlet-mapping>
+
+  <!-- 스프링 MVC가 제공하는 인코딩용 필터 정의 -->
+  <!-- 
+  	CharacterEncodingFilter 클래스를 사용하면 폼 입력으로
+  	넘어오는 요청 파라미터 데이터를 지정한 문자 셋으로 처리해 준다.
+  	
+  	get 방식의 요청은 톰캣 서버의 servlet.xml에 지정한 문자 셋으로 처리되고
+  	post 방식의 요청은 별도로 문자 셋 처리 코드를 작성하지 않아도 된다.  
+  -->
+   <filter>
+	<filter-name>CharacterEncodingFilter</filter-name>
+  	<filter-class>
+  		org.springframework.web.filter.CharacterEncodingFilter
+  	</filter-class>
+  	<init-param>
+  		<param-name>encoding</param-name>
+  		<param-value>utf-8</param-value>
+  	</init-param>
+  	<!--
+  		기존에 문자 셋이 설정되어 있다 하더라도 request, response에
+  		강제로 위에서 지정한 문자 셋으로 인코딩을 설정하라고 지정하는 셋팅
+  		즉 getCharacterEncoding()을 호출해 null이 아니라 하더라도
+  		request와 response에 utf-8 문자 셋을 강제로 설정한다.  
+  	-->  	
+  	<init-param>
+  		<param-name>forceEncoding</param-name>
+  		<param-value>true</param-value>
+  	</init-param>  	
+  </filter>
+  <filter-mapping>
+  	<filter-name>CharacterEncodingFilter</filter-name>
+  	<url-pattern>/*</url-pattern>
+  </filter-mapping>
+
+ <!-- 
+  	아래의 리소스가 src/main/webapp/META-INF 폴더의 context.xml 파일에
+  	정의되어 있다면 아래는 반드시 정의되어야 하는 것은 아니다. 다만 웹 어플리테이션을
+	위해 JNDI를 사용하는 리소스 참조를 web.xml에 정의하는 것을 권장하고 있다.
+	http://kenu.github.io/tomcat70/docs/jndi-resources-howto.html 참고
+  -->  
+  <resource-ref>
+    <description>DBCP Connection 정의</description>
+    <res-ref-name>jdbc/springDBPool</res-ref-name>
+    <res-type>javax.sql.DataSource</res-type>
+    <res-auth>Container</res-auth>
+  </resource-ref>    
+</web-app>

@@ -1,0 +1,48 @@
+* MySQL 접속 드라이버 변경 관련
+
+mysql-connector-java-5.1.37 까지는 경고 메시지 없이 잘 동작하는데
+mysql-connector-java-5.1.38 부터는 DB작업을 하면 아래와 같은 경고 메시지가
+출력되는데 이는 보안 접속 설정이 켜져 있는 상황에서 ssl 접속을 하지 않아서 그렇다.
+
+Tue Nov 08 21:55:49 KST 2016 WARN: Establishing SSL connection 
+without server's identity verification is not recommended. 
+According to MySQL 5.5.45+, 5.6.26+ and 5.7.6+ requirements SSL 
+connection must be established by default if explicit option isn't set. 
+For compliance with existing applications not using SSL the verifyServerCertificate
+property is set to 'false'. You need either to explicitly disable SSL by setting 
+useSSL=false, or set useSSL=true and provide truststore for server certificate 
+verification.
+
+
+jdbc connection 버전이 올라가면서 아래와 같이 접속 URL이 변경되었다.
+mysql 공식 문서를 참고하면 일반적으로 접속 URL은 아래와 같다.  
+
+jdbc:mysql://{ip}:{port}/{databasename}
+
+이를 아래와 같이 수정해 주면 경고 메시지는 출력되지 않는다.
+jdbc:mysql://{ip}:{port}/{databasename}?useSSL=false
+
+
+또한 mysql-connector-java-6.0.x 부터는 DriverClass도 아래와 같이 변경 되었다. 
+
+com.mysql.jdbc.Driver --> com.mysql.cj.jdbc.Driver
+
+그리고 MySQL 접속드라이버 6.0.x부터는 serverTimezone 이라는 것이 추가 되었다.
+그래서 접속 URL 지정을 할 경우에는 아래와 같이 지정해야 한다.
+아래는 한국 표준시(KST : Korea Standard Time)로 지정한 것이다. 
+만약 세계 협정시로 지정하려면 Asia/Seoul을 UTC로 변경해 주면 된다.
+
+jdbc:mysql://{ip}:{port}/{databasename}?useSSL=false&serverTimezone=Asia/Seoul
+
+만약 Timezone을 지정하지 않으면 아래와 같은 에러가 발생한다.
+
+exception [Request processing failed; nested exception is 
+org.springframework.jdbc.CannotGetJdbcConnectionException: Could not get JDBC Connection;
+nested exception is java.sql.SQLNonTransientConnectionException: Could not create connection to database server.] 
+with root cause java.lang.NullPointerException
+
+아래 사이트에서 dataSource를 이용하여 connection Pool을 설정할때 발생되는
+여러 유형을 확인 할 수 있다.
+https://bobswift.atlassian.net/wiki/display/SQL/Data+source+configuration+-+problem+determination
+
+

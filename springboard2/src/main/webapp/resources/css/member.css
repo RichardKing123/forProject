@@ -1,0 +1,22 @@
+@CHARSET "UTF-8";
+/* 로그인 폼 */
+#loginForm {
+	width: 600px;
+	margin: 0 auto;
+}
+#loginForm div {
+	margin: 0 auto;
+	width: 240px;
+	height: 30px;	
+}
+#loginForm input {
+	height: 24px;
+}
+#loginForm .btnSubmit {
+	text-align: right;
+}
+.memberTitle{
+	height: 60px;
+	line-height: 60px;	
+	text-align: center;	
+}

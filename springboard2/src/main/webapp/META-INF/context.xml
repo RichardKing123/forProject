@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Context>
+	<Resource name="jdbc/springDBPool" 
+			auth="Container"
+			type="javax.sql.DataSource"
+			driverClassName="com.mysql.jdbc.Driver"
+			url="jdbc:mysql://localhost:3306/spring?useSSL=false"
+			username="root"
+			password="12345678"			
+			factory="org.apache.commons.dbcp2.BasicDataSourceFactory"
+			maxTotal="10" 
+			maxIdle="5"
+			closeMethod="close" />	
+</Context>
+<!-- 톰캣에 기본 내장되어 있는 DBCP를 사용할 경우 DBCP Factory 지정 방법 -->
+<!-- factory="org.apache.tomcat.dbcp.dbcp.BasicDataSourceFactory"  -->

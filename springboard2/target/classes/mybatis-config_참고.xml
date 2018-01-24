@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration 
+	PUBLIC "-//mybatis.org//DTD Config 3.0//EN" 
+	"http://mybatis.org/dtd/mybatis-3-config.dtd">
+<!--
+	자바의 전통적인 JDBC 프로그래밍은 DB Connection을 개설하고 이 Connection
+	객체를 이용해 PreparedStatement 객체를 구하여 SQL 쿼리를 발생한다.
+	그리고 조회 결과를 모델 객체에 설정하는 과정을 거쳐 DB 자원을 해제하는 작업을
+	일일이 구현해야 한다. 이런 일련의 작업을 필요할 때 마다 매번 반복적으로 해야 하는 
+	불편함이 있다. 	MyBatis는 이런 자바의 전통적인 JDBC 프로그래밍을 간편하고
+	쉽게 구현할 수 있도록 도움을 주는 프레임워크이다. 다시 말해 자바의 전통적인 JDBC
+	프로그래밍을 대체할 수 있는 프레임워크 이다.
+	MyBatis는 원래 iBatis라는 이름으로 아파치 프로젝트에 편입되어 발전해 오다가
+	2010년 MyBatis3.x가 공개되면서 MyBatis라는 이름으로 변경되고 아파치
+	프로젝트에서 분리되어 Google Code의 프로젝트로 편입 되었다.
+	MyBatis의 가장 큰 특징은 SQL 쿼리를 프로그램 소스에서 분리해 별도의 
+	Mapper XML 파일이나 Mapper 인터페이스를 작성해 관리한다는 점이다.
+	
+	MyBatis3.x의 주요 구성 요소는 다음과 같다.
+	1. MyBatis 설정 파일		
+		DB의 접속 주소(별도 설정 가능)나 매핑(Mapper) 파일의 경로, 도메인
+		객체의 별칭, TransactionManager, DBCP 등의 정보를 설정한다.
+		
+	2. SqlSessionFactoryBean
+		MyBatis 설정 파일을 읽어 SqlSessionFactory 객체를 생성 해주는 객체
+		일반적으로 애플리케이션이 시작될 때 또는 DAO 객체에서 SqlSessionFactory
+		객체를 생성해 주는 역할을 하며 SqlSessionFactory 객체를 생성한 후에는 
+		재사용할 일이 없다.
+	
+	3. SqlSessionFactory
+		SqlSession 객체를 생성해 주는 객체로 애플리케이션에서 하나의 객체를
+		공유해 사용해야 하기 때문에 스레드에 안전하게 설계되어 있다.
+		스프링 프레임워크와 연계할 경우 DI 컨테이너에서 관리된다.
+	
+	4. SqlSessionTemplate
+		실제 SQL 발행이나 트랜잭션을 관리하는 객체로 SqlSessionFactory를
+		통해 필요할 때 마다 생성하여 사용하고 폐기한다. 
+		SqlSessionTemplate는 SqlSession을 구현한 클래스 이다. 
+		
+	5. Mapper 설정 정보
+		SQL 쿼리를 정의한 Mapper는 Mapper xml 파일이나 MyBatis가
+		제공하는 Mapper 인터페이스를 구현해 Mapper 정보를 설정할 수 있다.  
+		Mapper xml 설정 파일만 사용할 수도 있고 Mapper 인터페이스만
+		사용할 수도 있다. 또한 Mapper xml 설정 파일과 Mapper 인터페이스를
+		혼용해서 사용할 수도 있다. 
+		
+		- Mapper xml 파일
+		SQL 쿼리와 파라미터, 반환 타입 등을 xml 파일에 정의한 Mapper
+	
+		- Mapper 인터페이스
+		MyBatis에서 제공하는 인터페이스로 애노테이션을 사용해 SQL이나 
+		매핑 정보를 설정할 수 있다. Mapper 인터페이스 구현체는 SqlSession
+		객체와 같이 생성되기 때문에 SqlSession 객체와 함께 생성되고 폐기된다.
+		
+	참고 사이트 : http://blog.mybatis.org/
+				   http://www.mybatis.org/mybatis-3/ko/index.html
+-->
+<configuration>
+	<!--
+		외부 properties 파일에서 값을 읽어와 사용하는 경우 아래와 같이 설정할 수 있다.
+		보통 개발 서버와 운영 서버로 나누어 작업하는 경우가 많은데 이때 접속 드라이버나
+		사용자 정보는 거의 동일할 수 있지만 접속 url은 다르다.
+		이런 경우 공통적인 부분은 아래와 같이 MyBatis 설정 파일에 설정하고 접속 url만
+		propeties 파일에 지정하여 설정할 수 있다.
+		
+		<properties resource="repository/db.properties">
+		<properties name="db.driver" value="com.mysql.jdbc.Driver" />
+			접속 url은 개발 서버와 운영 서버가 다르기 때문에 애플리케이션 배포시 
+			properties 파일에서 변경한 후 배포하면 된다.			
+			<properties name="db.username" value="root" />
+			<properties name="db.password" value="12345678" />			
+		</properties>		 
+		
+		DataSource는 스프링이 제공하는 DataSource를 사용한다.
+	-->
+	<!-- <properties resource="repository/db.properties" /> -->
+	
+	<!--
+		settings 요소에 지정한 값은 SqlSessionFactory 객체가 SqlSession 객체를
+		생성할 때 객체의 속성을 결정하는 요소이다.
+	-->
+	<settings>
+		<!--
+			setting 요소의 useGeneratedKeys 속성은 자동으로 생성되는
+			키의 사용 여부를 지정한다. MySQL은 AUTO_INCREMENT,
+			Oracle은 Sequence, MSSQL은 Identify를 생성키로 제공한다.
+			기본값은 false 이다.			 			
+		-->
+		<!-- <setting name="useGeneratedKeys" value="true" /> -->
+		
+		<!--						
+			setting 요소의 mapUnderscoreToCamelCase 속성은 테이블의
+			컬럼명이 언더스코어(-) 표기법으로 되어 있는 경우 자바의 모델 객체로
+			변환할 때 언더스코어 표기법을 카멜 표기법으로 자동 매핑할지의 여부를
+			지정하는 속성이다. 기본 값은 false 이다.
+			전통적으로 테이블의 컬럼명은 언더스코어 표기법("_")을 사용하는 것이
+			일반적이며 자바 모델 클래스의 인스턴스 맴버는 카멜표기법을 사용한다.
+			이럴 경우에 쿼리문에 컬럼명의 별칭을 사용하거나 별도로 결과를 매핑
+			해야 하는 번거로움이 있다. 아래와 같이 mapUnderscoreToCamelCase
+			에 값으로 true를 지정하면 쿼리문에 컬럼명의 별칭을 사용하거나 별도로
+			결과를 매핑하는 번거로운 작업을 생략할 수 있다.
+		-->
+		<setting name="mapUnderscoreToCamelCase" value="true" />
+	</settings>
+	
+	<!--
+		아래는 mappers에 지정한 맵퍼 설정 파일에서 사용할 클래스에 별칭을
+		사용해 클래스 이름을 간단히 사용하기 위한 설정이다.
+		맵퍼 설정에서 맵핑 구문의 파라미터 타입(parameterType)이나 결과
+		타입(resultType)을 지정할 때 클래스의 완전한 이름을 지정해야 하는데
+		이때 지정하는 타입을 <typeAliases> 요소에 별칭을 지정하면 클래스
+		이름을 간단한 별칭으로 지정할 수 있는 편리한 기능이다.
+	-->	
+	<typeAliases>
+		<typeAlias type="com.springstudy.ch05.domain.Product" alias="Product" />		
+	</typeAliases>
+	
+	<!-- 	
+		마이바티스 설정에서 <environments> 요소와 <mappers>요소는
+		생략할 수 없는 필수 요소 이다. 하지만 스프링과 연동할 경우에는 MyBatis
+		설정 파일을 생략할 수 있다.  
+	
+		MyBatis를 이용해 DB와 연동하는 애플리케이션을 구현할 때 DB연결
+		정보는 아래와 같이 environments 요소 안에 기술한다.
+		environments의 하위 요소인 environment 요소를 사용해 트랜잭션
+		관리자와 dataSource를 지정하여 구성한다.
+		트랜잭션 관리자와 dataSource는 MyBatis만 사용해 DB 연동 모듈을
+		작성할 때 주로 사용하는 설정으로 MyBatis와 스프링프레임워크를 통합하게
+		되면 스프링프레임워크에서 트랜잭션과 dataSource 설정을 하기 때문에 
+		이 설정은 필요가 없다.
+	
+	<environments default="development">
+		<environment id="development">
+		
+			
+				transactionManager 요소에 데이터베이스 트랜잭션
+				관리자를 설정한다. 트랜잭션 관리자는 트랜잭션을 어떻게
+				처리할지 결정하는 객체로 아래와 같이 type 속성과 여러
+				개의 프로퍼티를 지정할 수 있다.
+				type 속성에 지정할 수 있는 값은 아래와 같다.
+				
+				- JDBC 
+				MyBatis API에서 제공하는 commit, rollback
+				메서드를 사용해 트랜잭션을 관리하는 방식을 지정한다.
+				
+				- MANAGED
+				MyBatis API를 사용하기 보다는 스프링과 같은 
+				프레임워크가 직접 트랜잭션을 관리하는 방식을 지정한다.
+					
+			<transactionManager type="MANAGED" />
+			
+			
+				dataSource 요소에 데이터소스를 설정한다. 
+				데이터소스는 데이터베이스 정보를 가지는 객체로  아래와
+				같이 type 속성과 여러 개의 프로퍼티를 지정할 수 있다.
+				type 속성에 지정할 수 있는 값은 아래와 같다.
+				
+				* UNPOOLD
+				DB 연동 작업을 할 때 DB 연결을 새롭게 생성하고 작업이
+				끝나면 DB 접속을 완전히 해제한다. 필요할 때 마다 DB
+				연결을 새롭게 생성하기 때문에 성능상 좋지 않다.
+				지정할 수 있는 프로퍼티는 아래와 같다.
+				  - driver : JDBC 드라이버의 완전한 클래스 명
+				  - url : DB 접속 URL  
+				  - username : DB 연결 계정의 아이디
+				  - password : DB 연결 계정의 비밀번호
+				  - defaultTransactionIsolationLevel :
+				        기본 적용할 트랜잭션 격리 레벨
+				    
+				DB는 4가지의 트랜잭션 격리 레벨을 제공한다.
+				격리 레벨은 현재 진행 중인 트랜잭션 내에서 수정되는 데이터를 
+				다른 사용자가 동시에 읽기 요청을 할 때 그 데이터를 얼마나 격리시켜
+				보여줄지를 결정하는 수준이다. 이 격리 레벨이 낮으면 데이터의
+				일관성이 떨어지고 동시 작업성은 올라가는 반면 격리 레벨이 높으면
+				데이터의 일관성은 좋지만 동시 작업성이 떨어지게 된다.
+				  - READ_COMMIT
+				    다른 트랜잭션에 의해 커밋된 데이터를 읽을 수 있다. 
+				    현재 트랜잭션에서 읽고 있는 동안 다른 트랜잭션에서 읽고
+				    쓰기가 가능한 격리 레벨이다. 커밋되지 않은 트랜잭션에서
+				    데이터를 쓰게되면 다른 트랜잭션은 블록된다.
+				  
+				  - READ_UNCOMMITTED
+				    다른 트랜재션에서 커밋하지 않은 데이터를 읽을 수 있다.
+				    현재 트랜잭션에서 커밋되지 않은 데이터를 다른 트랜잭션
+				    에서 읽을 수 있다. 
+				  
+				  - REPEATABLE_READ
+				    처음에 읽은 데이터와 이후에 읽은 데이터가 동일하다.
+				    같은 데이터에 대한 읽기와 새로운 데이터 추가는 가능하다.
+				    읽기 트랜잭션은 같은 데이터에 대한 수정이 모두 블록된다. 
+				  
+				  - SERIALIZABLE
+				    동일한 데이터에 대해서 동시에 두 개 이상의 트랜잭션을
+				    수행할 수 없다. 현재 트랜잭션이 진행되는 동안 다른 
+				    트랜잭션에서 데이터를 추가 할 수 없다.				
+				
+				     
+				* POOLED
+				DB 커넥션 풀의 프로퍼티를 지정하는 설정이다. 
+				일정 수의 DB 연결을 풀(POOL)이라는 메모리에 담아두고
+				필요할 때 풀에서 가져다 사용한 후 다시 풀에 반납하는 방식이다.
+				대부분은 서버가 시작될 때 풀이 생성되고 일정 수의 DB 연결을
+				생성하여 관리한다. 대부분의 웹 애플리케이션에서 사용하는 방식으로
+				위의 UNPOOLED에 설정한 프로퍼티외에 아래와 같은 프로퍼티를
+				추가로 설정할 수 있다.
+				  - poolMaximumActiveConnections 
+				    지정한 시간 동안 유지할 DB 연결의 수로 기본 값은 10 이다.
+				  
+				  - poolMaximumIdleConnections
+				    지정한 시간 동안 유지할 휴유 연결의 수
+				  
+				  - poolMaximumCheckoutTime
+				    강제 반환되기 전에 풀에서 체크아웃 될 수 있는 연결의 시간으로
+				    기본 값은 20000ms(20초) 이다.
+				  
+				  - poolTimeToWait
+				    풀이 로그 상태를 출력하고 비정상적으로 긴 경우 연결을 다시
+				    얻으려고 시도하는 설정으로 기본 값은 20000ms(20초) 이다.
+				    
+				  - poolPingQuery
+				    연결 상태가 정상적인 상태이며 요청을 처리할 준비가 되었는지
+				    체크하기 위해 DB에 보내는 핑 쿼리(Ping Query)를 지정한다.
+				    기본 값은 상태를 체크하는 쿼리가 없다.
+				    
+				  - poolPingEnabled
+				    연결 상태를 체크하는 핑 쿼리의 사용 여부를 지정한다.
+				    기본 값은 false이며 true를 지정하려면 poolPingQuery를
+				    지정해야 한다.
+				  
+				  - poolPingConnectionsNotUsedFor
+				    핑 쿼리를 얼마나 자주 사용할지 지정한다.
+				    기본 값은 0이며 poolPingEnabled가 true일 경우에만
+				    모든 연결이 매번 핑을 보내는 값이다.
+				    필요 이상의 핑을 피하기 위해 DB의 타임아웃 값과 같을 수 있다.
+								
+				
+				* JNDI
+				컨테이너의 JNDI 컨텍스트를 참조하는 설정이다.
+				JNDI(Java Naming and Directory Interface)는 디렉터리
+				서비스를 위해 자바가 제공하는 인터페이스 이다. 디렉터리 서비스는 
+				필요한 정보에 쉽게 접근할 수 있도록 제공하기 위한 서비스로 여기에
+				설정하는 JNDI 설정은 DataSource를 쉽게 찾기 위한 설정이다.
+				JNDI 설정은 톰갯과 같은 대부분의 웹 애플리케이션 서버(WAS)에서
+				제공하고 있다.
+				JNDI에는 아래와 같은 프로퍼티를 설정할 수 있다.
+				  - initial_context
+				    InitialContext에서 컨텍스트를 찾기 위한 설정이다.
+				    일반적으로 InitialContext에서 컨텍스트를 찾기 위해서
+				    initialContext.lookup("찾을 컨텍스트 명")와 같이 사용한다.
+				    이 설정이 생략되면 InitialContext가 data_source에 지정한
+				    값을 사용해 컨텍스트를 찾는다.
+				    이 프로퍼티의 값으로 java:comp/env를 지정할 수 있다.
+				  
+				  - data_source
+				    DataSource를 찾을 수 있는 컨텍스트 경로를 지정한다.
+				    initial_context 프로퍼티를 java:comp/env로 지정했으면
+				    data_source 프로퍼티는 Resource의 name 속성에 지정한
+				    이름을 지정하면 되고 initial_context 프로퍼티를 생략했다면
+				    "java:comp/env/Resource의 name 속성에 지정한 이름"을
+				    모두 기술해야 한다. 
+						
+			<dataSource type="POOLED" >
+				<property name="driver" value="${db.driver}" />
+				<property name="url" value="${db.url}" />
+				<property name="username" value="${db.username}" />
+				<property name="password" value="${db.password}" />
+			</dataSource>
+		</environment>
+	</environments>
+ -->
+	<!--
+		MyBatis 설정에서 중요한 맵퍼를 지정하는 요소이다.
+		맵퍼는 맵핑 구문과 파라미터, 결과 타입 등을 지정하는 역할을 한다.
+		
+		<mapper> 요소는 맵퍼 설정 파일의 위치를 지정하는 요소이다.
+		맵퍼 위치를 지정하는 방식에는 아래와 같이 4가지가 있으며 한 가지
+		방식만 사용해도 되고 두 가지 방식을 혼합해서 사용할 수도 있다.
+		
+		- 클래스 패스에 위치한 맵퍼 설정 파일 지정(resource 속성)
+		- URL을 이용한 맵퍼 설정 파일 지정(url 속성)
+		- 맵퍼 인터페이스를 사용하는 인터페이스 위치 지정(class 속성)
+		- 패키지를 지정해 패키지에서 맵퍼를 자동으로로 검색(name 속성)
+		
+		<mapper resource="repository/mappers/ProductMapper.xml" />
+		<mapper url="file:///repository/mappers/ProductMapper.xml" />
+		<mapper class="com.springstudy.mybatis.mapper.ProductMapper" />
+		<mapper name="com.springstudy.mybatis" />
+		
+		<mappers> 요소에는 여러 개의 <mapper> 요소를 가질 수 있다.
+	-->	
+	<mappers>
+		<mapper resource="repository/mappers/ProductMapper.xml" />
+		<mapper class="com.springstudy.ch05.mappers.ProductMapper" />
+	</mappers>
+</configuration>	

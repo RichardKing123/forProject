@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+	맵퍼의 namespace 속성은 맵핑 구문을 그룹핑 하는 역할을 한다.
+	여러 맵퍼에서 맵핑 구문의 id 속성의 값이 중복되더라도 namespace와
+	맵핑 구문의 id 속성에 지정한 값을 합쳐서 호출하기 때문에 맵핑 구문이
+	중복되지 않게 분류하여 관리할 수 있다.
+	테이블 이름을 바탕으로 namespace를 지정하고 맵핑 구문의 id 속성의
+	값은 SQL 문의 맥락에 따라서 명명하는 것이 일반적 이다.
+	
+	parameterType 속성에는 주로 SQL 문의 조건에 사용할 파라미터의
+	데이터 타입을 지정하는 속성으로 자바 원시 타입(기본 타입, String)과 자바빈,
+	Map과 같은 타입을 지정할 수 있다. resultType 속성도 parameterType
+	속성에서 지정한 타입을 많이 사용한다. parameterType과 resultType에
+	지정할 데이터 타입이 자바 원시 타입이면 생략가능하다.
+	
+	SQL문의 조건에 사용할 파라미터는 아래와 같이 #{} 로 감싸서 지정하면 된다.
+-->
+<mapper namespace="com.springstudy.mappers.MemberMapper" >
+	
+	<select id="login" resultType="Member">
+		select pass from member where id = #{id}
+	</select>
+
+	<select id="getMember" resultType="Member">
+		select * from member where id = #{id} 
+	</select>
+
+
+</mapper>	
+
+
+
